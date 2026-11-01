@@ -8,18 +8,18 @@ A 3D-printable desk stand that holds an **M5Stack Tab5** (landscape) and an **El
 
 ## Features
 
-- **Flush slots.** Both devices sit in slots whose depth matches their thickness, so their front faces are level with the stand and nothing covers the screen, keys or bezels. The stand's face is tilted 60° from the desk, with the Neo at the bottom and the Tab5 on top.
-- **Neo slot cut to the real shape.** The outline was traced from Elgato's official Stream Deck Neo device model. It is a 107 × 78 mm rounded "squircle" with slightly bowed top and bottom edges, not a plain rectangle. Finger scoops on both sides let you lift the Neo out.
-- **Tab5 slot with R4 corners**, matching the Tab5's rounded corners. The slot is open at the top, and the Tab5 slides in from above.
-- **Hidden USB-C plug.** The 90° plug on the Tab5's left edge rides down a channel under the face as the Tab5 slides in. Nothing of the plug or its cable shows from the front.
-- **NP-F550 battery (Tab5 Kit):** a notch behind the slot takes the battery, which protrudes 14.7 mm from the back. The Tab5 also fits without the battery.
-- **Speaker port.** The Tab5's speaker is on its bottom edge, at the right. A port right below it vents the sound forward through the face.
-- **Hidden cables.** The body is hollow. The Neo's captive cable goes through a hole in the floor of its slot, and the Tab5's cable drops through a slot at the top. Both leave through an opening at the back, at desk level.
+- **Flush slots.** Each slot is as deep as its device is thick, so both front faces sit level with the stand, and nothing covers the screen, keys or bezels. The face is tilted 60° from the desk, with the Neo at the bottom and the Tab5 on top.
+- **Neo slot cut to the real shape.** The outline is traced from Elgato's official Stream Deck Neo device model: a 107 × 78 mm rounded "squircle" with slightly bowed top and bottom edges. The Neo simply drops in. To take it out, tip the stand forward.
+- **Tab5 slot with R4 corners** that match the Tab5's rounded corners. The frame is the same 20 mm on the sides and at the top.
+- **Hidden USB-C plug.** The Tab5 goes in tilted, with its plug side first. The 90° plug on its left edge hooks into a channel under the frame, then the other side drops into the slot. Nothing of the plug or its cable shows from the front.
+- **NP-F550 battery (Tab5 Kit).** The battery protrudes 14.7 mm from the back of the Tab5 and fits into a notch behind the slot. The Tab5 also fits without the battery.
+- **Speaker port.** A port right below the speaker (on the Tab5's bottom edge, at the right) vents the sound forward through the face.
+- **Hidden cables.** The body is hollow. Both cables go through openings in the slot floors and leave through an opening at the back, at desk level.
 - Recesses for four 10 mm stick-on rubber feet.
 
-| Front | Back | Side | Top |
+| Front | Back | Side | Tab5 going in |
 |---|---|---|---|
-| ![Front](images/stand_front.png) | ![Back](images/stand_back.png) | ![Side](images/stand_side.png) | ![Top](images/stand_top.png) |
+| ![Front](images/stand_front.png) | ![Back](images/stand_back.png) | ![Side](images/stand_side.png) | ![Tab5 going in](images/tab5_insertion.png) |
 
 ## Printing
 
@@ -28,22 +28,32 @@ A 3D-printable desk stand that holds an **M5Stack Tab5** (landscape) and an **El
 | Orientation | As in the STL: upright, base on the bed |
 | Supports | None needed (see the note below) |
 | Material | PLA or PETG |
-| Layer height | 0.2 mm (0.15 mm gives a cleaner Neo slot ceiling) |
+| Layer height | 0.2 mm (0.15 mm gives cleaner slot ceilings) |
 | Walls / infill | 3+ perimeters, 15% infill |
-| Size | 168 × 135 × 164 mm |
-| Volume | 568 cm³ as a solid. The frame around the slots is solid in the model, so most of it prints as infill. |
+| Size | 168 × 146 × 181 mm |
+| Volume | 721 cm³ as a solid. The frame around the slots is solid in the model, so most of it prints as infill. |
 
-**About overhangs.** Every surface is printable without support except one. To keep the Neo flush, the top wall of its slot must stay square to the face, which makes it a 60° overhang (about 25 cm²). It sits hidden behind the Neo, and most printers handle 60° fine with good part cooling. If yours struggles, paint a support enforcer on that wall in your slicer. All other overhangs stay within 40° of vertical, and the longest bridge is 20 mm, on the inside ceiling.
+**About overhangs:**
+- **Slot top walls.** These are the only steep overhangs. To keep the devices flush, the top wall of each slot has to stay square to the face, which makes it a 60° overhang: about 25 cm² for the Neo slot and 15 cm² for the Tab5 slot. Both walls sit hidden behind the devices, and most printers handle 60° fine with good part cooling. If yours struggles, paint support enforcers on those two walls in your slicer.
+- **Everything else** stays within 40° of vertical. The longest bridge is 17 mm, on the inside ceiling.
 
 ## Assembly
 
 1. Stick the four rubber feet into the recesses under the base.
-2. **Neo:** fold its integrated stand flat against its back. Push the cable's plug end through the hole in the floor of the Neo slot. It drops through the hollow body and comes out of the rear opening. Press the Neo into its slot. To take it out, use the finger scoops at its sides.
-3. **Tab5:** drop the free end of the 90° USB-C cable (the computer or charger end) into the narrow slot at the top left of the stand. It falls through the body and comes out of the rear opening. Plug the 90° end into the Tab5's USB-C port (left edge), with the cable pointing back. Then slide the Tab5 down into its slot from the top, with the battery entering its notch, while the plug rides down the hidden channel. To remove the Tab5, slide it up; you can push it from below through the speaker port.
+2. **Neo.**
+   1. Fold its integrated stand flat against its back.
+   2. Push the cable's plug end through the hole in the floor of the Neo slot. It drops through the hollow body and comes out of the rear opening.
+   3. Press the Neo into its slot.
+3. **Tab5.**
+   1. Push the free end of the 90° USB-C cable (the computer or charger end) through the opening in the left part of the Tab5 slot floor. It drops through the body and comes out of the rear opening.
+   2. Plug the 90° end into the Tab5's USB-C port (left edge), with the cable pointing back.
+   3. Hold the Tab5 tilted about 20°, with its right side up. Set the left edge into the slot and slide it left, so that the plug tucks under the left frame.
+   4. Lower the right side into the slot, with the battery entering its notch.
+4. **To take either device out,** tip the stand forward. The Tab5 swings out on its plug side: lift its right side, slide it right about 11 mm, and lift it off.
 
 ### Which 90° USB-C cable to use
 
-Use a right-angle plug whose cable leaves towards the **back** of the device, perpendicular to the screen. The channel fits a plug head that sticks out up to 13 mm from the port, is up to 13 mm wide and up to 7 mm thick. You can change these limits with `PLUG`.
+Use a right-angle plug whose cable leaves towards the **back** of the device, perpendicular to the screen. The channel fits a plug head up to 13 mm long out of the port, 13 mm wide and 7 mm thick. You can change these limits with `PLUG`.
 
 ## Dimensions used
 
@@ -57,7 +67,9 @@ Use a right-angle plug whose cable leaves towards the **back** of the device, pe
 | Stream Deck Neo outline | 107 × 78 mm, traced from the official device model render | [Elgato "Stream Deck Neo STP"](https://marketplace.elgato.com/product/stream-deck-neo-stp-399e9aac-8994-4b6c-8709-cfaa4409308a) |
 | Stream Deck Neo depth | 26 mm with the stand folded (body about 20 mm, plus the folded stand) | [Elgato specs](https://www.elgato.com/us/en/p/stream-deck-neo-black) |
 
-> **Before printing:** the Neo's outline and depth come from Elgato's official model and specs. They were not measured on a physical unit. If your Neo, with its stand folded, is not 26 mm deep, set `NEO_T` in `generate_stand.py` and regenerate. If it doesn't sit flush, the depth is the number to adjust. If you have Elgato's STP file, you can also check `NEO_OUTLINE_RIGHT` against it.
+> **Before printing:** the Neo's outline and depth come from Elgato's official model and specs. They were not measured on a physical unit.
+> - **Depth:** if your Neo is not 26 mm deep with its stand folded, set `NEO_T` in `generate_stand.py` and regenerate. If it doesn't sit flush, this is the number to adjust.
+> - **Outline:** if you have Elgato's STP file, you can check `NEO_OUTLINE_RIGHT` against it.
 
 ## Customising and regenerating the STL
 
@@ -66,7 +78,7 @@ The STL is generated by a parametric Python script built on [manifold3d](https:/
 ```bash
 pip install -r requirements.txt
 python generate_stand.py          # writes stl/tab5_neo_stand.stl
-python tools/check_fit.py         # checks fit, printability and mesh
+python tools/check_fit.py         # checks fit, insertion path, printability and mesh
 python tools/render_previews.py   # refreshes the images in images/
 ```
 
@@ -77,12 +89,13 @@ Main parameters, at the top of `generate_stand.py`:
 | `TILT` | 60 | Face angle from the desk, in degrees |
 | `NEO_T` | 26 | Neo depth with its stand folded (sets the Neo slot depth) |
 | `NEO_OUTLINE_RIGHT` | traced | Right half of the Neo's front outline |
-| `CLEAR` | 0.5 | Gap around each device in its slot |
-| `SIDE` | 20 | Frame width on each side of the Tab5 (the left one hides the plug) |
-| `BOTTOM`, `NEO_Z` | 6.5, 18 | Frame below the Neo, and its height above the desk |
+| `CLEAR` | 0.6 | Gap around each device in its slot (lets the Tab5 tilt in) |
+| `SIDE` | 20 | Frame around the Tab5, at the sides and at the top |
+| `BOTTOM`, `NEO_Z` | 6.5, 18 | Frame below the Neo, and the Neo's height above the desk |
 | `SPEAKER_PORT` | 7 | Height of the speaker port below the Tab5 |
-| `PLUG`, `PLUG_CLEAR` | 13 × 13 × 7, 0.8 | 90° USB-C plug size and clearance in the hidden channel |
-| `NEO_GRIP` | 13, 12 | Finger scoops: half length and depth |
+| `PLUG`, `PLUG_CLEAR` | 13 × 13 × 7, 0.8 | 90° USB-C plug size, and its clearance in the hidden channel |
+| `TAB5_TILT_IN` | 20 | Tilt the Tab5 goes in at; the channel is sized from this motion |
+| `BATTERY_SWING` | 3 | Extra room in the battery notch for the battery to swing out |
 | `WALL`, `FLOOR` | 2.4, 3 | Shell wall and base thickness |
 | `TAB5_MIRROR` | `False` | Mirrors the Tab5 features, if your USB-C is on the other side |
 
@@ -93,7 +106,8 @@ Main parameters, at the top of `generate_stand.py`:
 - The air path from the speaker grille out through the face is clear.
 - There is no material in front of either device's outline, so both are fully visible and flush.
 - The face material fully covers the USB-C plug, so it is hidden from the front.
-- There are no overhangs beyond 45° except the known Neo slot ceiling, and bridges stay under 25 mm.
+- The Tab5, with its battery and the plug attached, can tilt into and out of its slot along the path described in Assembly without touching the stand.
+- There are no overhangs beyond 45° except the two known slot top walls, and bridges stay under 25 mm.
 
 For the preview renders, the scripts download M5Stack's official Tab5 model into `.cache/` (from the M5_Hardware repository). It is not part of this repository.
 
@@ -102,8 +116,8 @@ For the preview renders, the scripts download M5Stack's official Tab5 model into
 ```
 generate_stand.py        parametric model -> stl/tab5_neo_stand.stl
 stl/                     ready-to-print STL
-tools/devices.py         Tab5, battery, plug and Neo envelopes
-tools/check_fit.py       fit, printability and mesh checks
+tools/devices.py         Tab5, battery, plug and Neo envelopes; Tab5 insertion path
+tools/check_fit.py       fit, insertion, printability and mesh checks
 tools/render_previews.py README images
 images/                  rendered previews
 ```

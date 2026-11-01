@@ -31,15 +31,16 @@ def neo_mockup():
     return [(d.manifold_triangles(m), c) for m, c in parts]
 
 
-def tab5_mockup():
+def tab5_mockup(motion=None):
+    """Tab5 (official model, glass, screen), battery and 90° plug, optionally moved."""
+    motion = g.tab5_motion() if motion is None else motion
     u0, u1 = g.tab5_range(0, g.TAB5_W)
     glass = d.box(u0, u1, g.V_TAB, g.V_TOP, -0.3, 0.05, r=g.TAB5_R)
     screen = d.box(u0 + 9, u1 - 9, g.V_TAB + 9, g.V_TOP - 9, 0, 0.15)
-    return [(d.tab5_reference_triangles(), "#2b2e33"),
-            (d.manifold_triangles(glass), DARK),
-            (d.manifold_triangles(screen), "#24476b"),
-            (d.manifold_triangles(d.battery()), "#55595f"),
-            (d.manifold_triangles(d.usb_plug()), "#6b7078")]
+    parts = [(glass, DARK), (screen, "#24476b"), (d.battery(), "#55595f"),
+             (d.usb_plug_head(), "#6b7078")]
+    return ([(d.moved_points(d.tab5_reference_triangles(), motion), "#2b2e33")]
+            + [(d.manifold_triangles(d.moved(m, motion)), c) for m, c in parts])
 
 
 def render(objects, path, elev, azim, width=1100, supersample=2):
@@ -123,7 +124,9 @@ def main():
     render(stand, IMAGES / "stand_front.png", elev=24, azim=-35)
     render(stand, IMAGES / "stand_back.png", elev=24, azim=145)
     render(stand + devices, IMAGES / "stand_side.png", elev=0, azim=-90, width=800)
-    render(stand + devices, IMAGES / "stand_top.png", elev=70, azim=-20)
+    # How the Tab5 goes in: plug side first, hooked under the frame, then laid down.
+    tilted = tab5_mockup(g.tab5_motion(g.TAB5_TILT_IN))
+    render(stand + tilted + neo_mockup(), IMAGES / "tab5_insertion.png", elev=12, azim=62)
 
 
 if __name__ == "__main__":

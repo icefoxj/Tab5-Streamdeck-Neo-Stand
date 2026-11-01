@@ -31,14 +31,20 @@ After any geometry change, run all three and commit the STL and images together 
 
 ## Design constraints to preserve
 
-- **Flush slots:** the user asked for both devices to sit in slots, flush with the face. The Neo slot depth is `NEO_T`, and the Tab5 slot depth is `TAB5_T`.
-- **Hidden USB-C plug:** the 90° plug must not be visible from the front. It sits in a channel under at least 5 mm of face, which is why the Tab5 slot is open at the top and the Tab5 slides in from above. `check_fit` verifies that the face covers the plug.
+- **Flush, closed slots:** the user asked for both devices to sit in slots, flush with the face.
+  - The Neo slot is `NEO_T` deep and the Tab5 slot `TAB5_T` deep.
+  - The Tab5 slot is closed, with a `SIDE` frame at the top as well as at the sides (user request).
+  - There are no finger scoops: the devices come out when the stand is tipped forward (user request).
+- **Hidden USB-C plug:** the 90° plug must not be visible from the front. It sits in a channel under at least 5 mm of face, so the Tab5 has to go in tilted.
+  - The Tab5 tilts by `TAB5_TILT_IN` about its plug-side front edge (`tab5_motion()`), with the plug hooked under the frame, then it slides by `TAB5_SLIDE`.
+  - `CHANNEL_U` and `CHANNEL_W` are computed from that sweep. The slot clearance and `BATTERY_SWING` are what let the body and the battery rotate.
+  - `check_fit` walks the path (`devices.tab5_removal_path()`) and verifies that the face covers the plug. If you change the slot, the plug or the battery, re-run it.
 - **Speaker:** the Tab5 grille is on its bottom edge at x 91.5–110.5. It vents through `SPEAKER_PORT` in the face.
 - **Printable upright without support:** keep surfaces within `MAX_OVERHANG` (40°):
   - Holes in sloped floors go through `face_hole()`, a vertical sweep.
   - Upper ends of recesses lean inward by `RUN_PER_RISE`.
-  - The only accepted exception is the Neo slot's top wall (60°, hidden behind the Neo). It must stay square to the face for the Neo to sit flush, and `check_fit` whitelists exactly that region.
-- **Clean topology:** coplanar or touching faces leave coincident vertices in the STL. Offset parts slightly so they cross instead (see the battery-notch walls in `cavity()` and the channel running 1.5 mm under the Tab5 edge).
+  - The only accepted exceptions are the top walls of the two slots (60°, hidden behind the devices). They must stay square to the face for the devices to sit flush, and `check_fit` whitelists exactly those regions.
+- **Clean topology:** coplanar or touching faces leave coincident vertices in the STL. Offset parts slightly so they cross instead (see the battery-notch walls in `cavity()` and the uniform slot clearance).
 
 ## Device data and where it came from
 

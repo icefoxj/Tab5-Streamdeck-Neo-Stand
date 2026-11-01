@@ -2,10 +2,11 @@
 
     python generate_stand.py            -> writes stl/tab5_neo_stand.stl
 
-Both devices sit in slots, flush with the front face of the stand. The Tab5 slides in
-from the top, and its 90° USB-C plug rides down a channel hidden under the face. The
-Neo drops into a slot cut to its real outline. Both cables run through the hollow body
-to a rear exit. All dimensions are in millimetres.
+Both devices sit in closed slots, flush with the front face of the stand. The Neo drops
+into a slot cut to its real outline. The Tab5 goes in tilted: its 90° USB-C plug hooks
+under the frame beside the slot first, then the far side drops in, so the plug stays
+hidden behind the face. Both cables run through the hollow body to a rear exit. All
+dimensions are in millimetres.
 
 Output coordinates: X = width (left to right, seen from the front), Y = depth
 (front to back), Z = up. The stand prints upright, exactly as it sits on the desk.
@@ -67,8 +68,8 @@ TILT = 60.0           # face angle from the desk
 WALL = 2.4            # shell wall
 FLOOR = 3.0           # bottom plate
 EDGE_R = 1.6          # rounding of the outer edges
-CLEAR = 0.5           # gap around each device in its slot
-SIDE = 20.0           # frame each side of the Tab5; the left one hides the USB-C plug
+CLEAR = 0.6           # gap around each device in its slot (lets the Tab5 tilt in)
+SIDE = 20.0           # frame around the Tab5 (sides and top); the plug side hides the plug
 BOTTOM = 6.5          # frame below the Neo
 NEO_Z = 18.0          # height of the Neo's bottom front edge above the desk
 STRIP = 3.0           # frame between the Neo slot and the speaker port
@@ -78,10 +79,11 @@ MAX_OVERHANG = 40.0   # steepest printed overhang, degrees from vertical
 
 PLUG = (13.0, 13.0, 7.0)  # 90° USB-C plug: length out of the port, width, thickness
 PLUG_CLEAR = 0.8
-CABLE_SLOT = 6.5          # slot the plug's cable slides down
+TAB5_TILT_IN = 20.0       # the Tab5 goes in (and out) tilted this much about its plug edge
+THREAD_HOLE = 24.0        # opening behind the plug for threading the cable's far end
 BATTERY_CLEAR = 1.0       # each side of the battery notch
+BATTERY_SWING = 3.0       # extra room for the battery to swing out as the Tab5 tilts
 NEO_HOLE = (40.0, 44.0)   # cable hole in the Neo slot floor: width, height
-NEO_GRIP = (13.0, 12.0)   # finger scoops beside the Neo: half length, depth at the slot
 REAR_EXIT = (56.0, 30.0)  # cable exit in the back wall: width, height
 FOOT_D, FOOT_DEPTH, FOOT_INSET = 10.5, 1.0, 12.0  # recesses for stick-on rubber feet
 
@@ -100,14 +102,48 @@ NEO_W = 2 * max(u for u, _ in NEO_OUTLINE_RIGHT)
 NEO_H = max(v for _, v in NEO_OUTLINE_RIGHT)
 NEO_TOP = NEO_H + CLEAR                  # top edge of the Neo slot
 V_TAB = NEO_TOP + STRIP + SPEAKER_PORT   # bottom edge of the Tab5
-V_TOP = V_TAB + TAB5_H                   # top edge of the Tab5 = top of the face
+V_TOP = V_TAB + TAB5_H                   # top edge of the Tab5
+V_FACE_TOP = V_TOP + SIDE                # top of the face: same frame as at the sides
+PLUG_SIDE = 1 if TAB5_MIRROR else -1     # the Tab5 edge with the USB-C port is at -u
+TAB5_EDGE = PLUG_SIDE * TAB5_W / 2
 PLUG_W = -TAB5_T + TAB5_USBC_DEPTH       # w of the USB-C centre line
-CHANNEL = (PLUG_W - PLUG[2] / 2 - PLUG_CLEAR, PLUG_W + PLUG[2] / 2 + PLUG_CLEAR)
-UPPER_DEPTH = -CHANNEL[0] + WALL         # solid frame around the Tab5 slot and channel
 BATTERY_W = -TAB5_T - TAB5_BATTERY_PROTRUSION - 1.5
 LOWER_DEPTH = max(NEO_T, -BATTERY_W) + WALL  # solid frame around the Neo slot
 LOWER_TOP = V_TAB + TAB5_BATTERY[1]      # solid frame ends where the battery notch starts
-TOP_DEPTH = (LOWER_DEPTH + WALL + 1.0) / S
+
+
+def tab5_motion(tilt=0.0, slide=0.0, lift=0.0):
+    """Local (u, v, w) 3x4 transform of the Tab5 on its way out of the slot.
+
+    It tilts about its plug-side front edge (the far side lifts), slides away from the
+    plug side until the plug clears the frame, then lifts off. Reversed, that is how
+    it goes in.
+    """
+    a = radians(-PLUG_SIDE * tilt)
+    ca, sa = cos(a), sin(a)
+    u0 = TAB5_EDGE
+    return np.array([[ca, 0, -sa, u0 - u0 * ca - PLUG_SIDE * slide],
+                     [0, 1, 0, 0],
+                     [sa, 0, ca, -u0 * sa + lift]], dtype=float)
+
+
+def _plug_corners(m):
+    us = (TAB5_EDGE, TAB5_EDGE + PLUG_SIDE * PLUG[0])
+    ws = (PLUG_W - PLUG[2] / 2, PLUG_W + PLUG[2] / 2)
+    return np.array([(m @ (u, 0, w, 1))[[0, 2]] for u in us for w in ws])
+
+
+# Slide just far enough for the tilted plug to clear the edge of the frame.
+_skin_edge = TAB5_EDGE + PLUG_SIDE * CLEAR
+TAB5_SLIDE = max(PLUG_SIDE * (_plug_corners(tab5_motion(TAB5_TILT_IN))[:, 0] - _skin_edge)) + 1.0
+# The channel holds every position the plug passes through on the way in.
+_sweep = np.vstack([_plug_corners(tab5_motion(t)) for t in np.linspace(0, TAB5_TILT_IN, 21)]
+                   + [_plug_corners(tab5_motion(TAB5_TILT_IN, d))
+                      for d in np.linspace(0, TAB5_SLIDE, 11)])
+CHANNEL_U = tuple(sorted((_sweep[:, 0].min() - PLUG_CLEAR, _sweep[:, 0].max() + PLUG_CLEAR)))
+CHANNEL_W = (_sweep[:, 1].min() - PLUG_CLEAR, PLUG_W + PLUG[2] / 2 + PLUG_CLEAR)
+UPPER_DEPTH = -CHANNEL_W[0] + WALL       # solid frame around the Tab5 slot and channel
+TOP_DEPTH = (LOWER_DEPTH + 1 + WALL + 1.0) / S
 
 set_circular_segments(64)
 
@@ -192,15 +228,17 @@ def neo_outline(clear=0.0):
 
 
 def battery_range():
+    """Battery notch in u; wider on the side the battery swings to as the Tab5 tilts."""
     x0, _, x1, _ = TAB5_BATTERY
     u0, u1 = tab5_range(x0, x1)
-    return u0 - BATTERY_CLEAR, u1 + BATTERY_CLEAR
+    return (u0 - BATTERY_CLEAR - (BATTERY_SWING if PLUG_SIDE > 0 else 0),
+            u1 + BATTERY_CLEAR + (BATTERY_SWING if PLUG_SIDE < 0 else 0))
 
 
 def side_profile(bottom=0.0):
     """Outer side profile in (Y, Z). `bottom` lets the rounding pass extend it below Z=0."""
     face_bottom = vw(-CLEAR - BOTTOM, 0)
-    face_top = vw(V_TOP, 0)
+    face_top = vw(V_FACE_TOP, 0)
     top_back = (face_top[0] + TOP_DEPTH, face_top[1])
     rear = (top_back[0] + REAR_LEAN, bottom)
     return ccw([(face_bottom[0], bottom), rear, top_back, face_top, face_bottom])
@@ -232,62 +270,49 @@ def cavity():
     return hollow - side_prism(band(-500, 500, -LOWER_DEPTH - 1, 500), n0 - WALL, n1 + WALL)
 
 
-def neo_grips():
-    """Finger scoops on both sides of the Neo slot, to lift it straight out."""
-    half, depth = NEO_GRIP
-    radius = 18.0
-    vc, reach = NEO_H / 2, depth + 1
-    # The upper end leans into the scoop as it gets deeper, so it prints without support.
-    section = CrossSection([ccw([(vc - half, -reach), (vc + half - reach * RUN_PER_RISE, -reach),
-                                 (vc + half, 0), (vc + half, 2), (vc - half, 2)])])
-    along_v = np.array([[1, 0, 0, 0], [0, 0, 1, vc - half - 1], [0, -1, 0, 0]], dtype=float)
-    grips = []
-    for side in (-1, 1):
-        edge = side * (NEO_W / 2 + CLEAR)
-        u0, u1 = sorted((edge - side * 2, edge + side * radius))
-        scoop = Manifold.cylinder(2 * half + 2, radius).transform(along_v)
-        scoop = scoop.translate((edge, 0, radius - depth))
-        grips.append(scoop.transform(FACE) ^ slope_prism(section, u0, u1))
-    return grips
-
-
 def cutouts():
     cuts = []
-    # Neo: slot cut to its outline, flush with the face, a cable hole in its floor and
-    # finger scoops at the sides.
+    # Neo: slot cut to its outline, flush with the face, and a cable hole in its floor.
     cuts.append(face_cut(neo_outline(CLEAR), -NEO_T, 5))
     hw, hh = NEO_HOLE
     hole = rounded_rect(-hw / 2, NEO_CABLE_V - hh / 2, hw / 2, NEO_CABLE_V + hh / 2, 8)
     cuts.append(face_hole(hole, -NEO_T, depth=2 * (LOWER_DEPTH - NEO_T) + 6))
-    cuts += neo_grips()
 
-    # Tab5: slot open at the top, so it slides in from above.
+    # Tab5: closed slot following its rounded outline. Its top wall, like the Neo's, stays
+    # square to the face so the device sits flush.
     u0, u1 = tab5_range(0, TAB5_W)
-    cuts.append(face_cut(rounded_rect(u0 - CLEAR, V_TAB, u1 + CLEAR, V_TOP + 80, TAB5_R + CLEAR),
+    cuts.append(face_cut(rounded_rect(u0 - CLEAR, V_TAB - CLEAR, u1 + CLEAR, V_TOP + CLEAR, TAB5_R + CLEAR),
                          -TAB5_T, 5))
-    # NP-F550 notch behind it, open at the top as well.
+    # NP-F550 notch behind it. Its upper end leans in as it gets deeper (printable).
     n0, n1 = battery_range()
-    cuts.append(face_cut(rounded_rect(n0, LOWER_TOP - 2, n1, V_TOP + 80, 3),
-                         BATTERY_W, -TAB5_T + 0.1))
+    v_end = V_TAB + TAB5_BATTERY[3] + 1.0
+    shallow = -TAB5_T + 0.1
+    notch = CrossSection([ccw([(LOWER_TOP - 2, BATTERY_W), (v_end, BATTERY_W),
+                               (v_end + (shallow - BATTERY_W) * RUN_PER_RISE, shallow),
+                               (LOWER_TOP - 2, shallow)])])
+    cuts.append(slope_prism(notch, n0, n1))
     # Speaker port: the grille on the Tab5's bottom edge vents forward through the face.
     s0, s1 = tab5_range(*TAB5_SPEAKER_X)
     grille_back = -TAB5_T + TAB5_SPEAKER_DEPTH[0] - 1.0
     cuts.append(face_cut(rounded_rect(s0 - 1, V_TAB - SPEAKER_PORT, s1 + 1, V_TAB + 2, 2),
                          grille_back, 5))
 
-    # Hidden channel for the 90° USB-C plug, beside the slot and under the face, and the
-    # slot its cable slides down into the hollow body. Both open at the top.
-    edge = tab5_u(0) + (CLEAR if TAB5_MIRROR else -CLEAR)
-    out = 1 if TAB5_MIRROR else -1
-    reach = PLUG[0] + 1.5
-    a, b = sorted((edge - out * 1.5, edge + out * reach))  # runs 1.5 mm under the Tab5 edge
+    # Channel for the 90° USB-C plug, under the frame beside the slot and running under
+    # the Tab5's edge: it holds every position the plug passes through as the Tab5 tilts
+    # in. Its upper end leans in as it gets deeper (printable).
     vc = V_TAB + TAB5_USBC_Y
-    cuts.append(face_cut(rounded_rect(a, vc - PLUG[1] / 2 - PLUG_CLEAR, b, V_TOP + 80, 1),
-                         *CHANNEL))
-    uc = edge + out * (PLUG[0] - 3.0)
-    cuts.append(face_cut(rounded_rect(uc - CABLE_SLOT / 2, vc - CABLE_SLOT / 2,
-                                      uc + CABLE_SLOT / 2, V_TOP + 80, CABLE_SLOT / 2),
-                         -UPPER_DEPTH - 3, CHANNEL[0] + 0.1))
+    v0, v1 = vc - PLUG[1] / 2 - PLUG_CLEAR, vc + PLUG[1] / 2 + PLUG_CLEAR
+    w0, w1 = CHANNEL_W
+    channel = CrossSection([ccw([(v0, w0), (v1, w0), (v1 + (w1 - w0) * RUN_PER_RISE, w1),
+                                 (v0, w1)])])
+    cuts.append(slope_prism(channel, *CHANNEL_U))
+    # Opening behind the plug, through to the hollow body: the cable's far end is
+    # threaded through it, and the cable runs out of it to the rear exit. Swept down,
+    # it drops as it goes deeper, so it reaches a little above the channel to keep the
+    # cable's path clear all the way through.
+    far = TAB5_EDGE + PLUG_SIDE * (PLUG[0] + 0.5)
+    a, b = sorted((far, far - PLUG_SIDE * THREAD_HOLE))
+    cuts.append(face_hole(rounded_rect(a, v0 + 0.5, b, v1 + 2.0, 3), w0, depth=3 * WALL))
 
     # Cable exit at the bottom of the back wall, with a 45° chamfered top.
     ew, eh = REAR_EXIT

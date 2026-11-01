@@ -72,13 +72,22 @@ def main():
         report(clash < TOLERANCE_MM3, f"{name}: {clash:.2f} mm3 of overlap")
 
     cover = d.plug_cover()
-    gap = cover.volume() - (stand ^ cover).volume()
+    gap = max(0.0, cover.volume() - (stand ^ cover).volume())
     report(gap < TOLERANCE_MM3, f"USB-C plug hidden behind the face: {gap:.2f} mm3 open in front of it")
+
+    # The Tab5 goes in tilted with the plug attached (and comes out the same way when the
+    # stand is tipped forward). Walk that path and make sure nothing hits the stand.
+    tab5_parts = d.tab5() + d.battery() + d.usb_plug_head()
+    worst, where = max((abs((stand ^ d.moved(tab5_parts, m)).volume()), phase)
+                       for phase, m in d.tab5_removal_path())
+    report(worst < TOLERANCE_MM3, f"Tab5 + battery + plug tilt in and out of the slot: "
+           f"{worst:.2f} mm3 worst overlap ({where})")
 
     # Downward-facing surfaces steeper than 45° from vertical, ignoring the bed.
     # Flat ones are bridges and only need a short span; sloped ones would need support.
-    # The one accepted exception is the Neo slot's top wall: it has to stay square to the
-    # face to keep the Neo flush, which makes it a 60° overhang hidden behind the Neo.
+    # The accepted exceptions are the top walls of the two slots: they have to stay square
+    # to the face to keep the devices flush, which makes them 60° overhangs hidden behind
+    # the devices.
     mesh = stand.to_mesh()
     verts = np.asarray(mesh.vert_properties)[:, :3]
     faces = np.asarray(mesh.tri_verts)
@@ -89,11 +98,19 @@ def main():
     on_bed = tris[:, :, 2].max(axis=1) < 0.01
     bad = (nz < -cos(radians(45)) - 1e-6) & ~on_bed
     u, v, w = ((tris.mean(axis=1) - g.FACE[:, 3]) @ g.FACE[:, :3]).T
-    neo_top = ((v > g.NEO_H / 2) & (v < g.NEO_TOP + 0.3) & (w > -g.NEO_T - 0.1)
-               & (np.abs(u) < g.NEO_W / 2 + g.CLEAR + 0.1) & (-nz < sin(radians(60.5))))
-    known = bad & neo_top
-    report(known.any(), f"Neo slot top wall: {area[known].sum():.0f} mm2 at up to "
-           f"{np.degrees(np.arcsin(-nz[known].min())):.0f}° (accepted, hidden behind the Neo)")
+    steep_ok = -nz < sin(radians(60.5))
+    slot_tops = {
+        "Neo": (v > g.NEO_H / 2) & (v < g.NEO_TOP + 0.3) & (w > -g.NEO_T - 0.1)
+        & (np.abs(u) < g.NEO_W / 2 + g.CLEAR + 0.1),
+        "Tab5": (v > g.V_TAB + g.TAB5_H / 2) & (v < g.V_TOP + g.CLEAR + 0.3)
+        & (w > -g.TAB5_T - 0.1) & (np.abs(u) < g.TAB5_W / 2 + g.CLEAR + 0.1),
+    }
+    known = np.zeros_like(bad)
+    for name, region in slot_tops.items():
+        hit = bad & region & steep_ok
+        known |= hit
+        report(hit.any(), f"{name} slot top wall: {area[hit].sum():.0f} mm2 at up to "
+               f"{np.degrees(np.arcsin(-nz[hit].min())):.0f}° (accepted, hidden behind it)")
     for idx in surface_patches(faces, np.flatnonzero(bad & ~known)):
         pts = tris[idx].reshape(-1, 3)
         z = pts[:, 2].mean()

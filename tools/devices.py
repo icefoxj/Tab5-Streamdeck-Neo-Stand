@@ -97,7 +97,30 @@ def plug_cover():
     v = g.V_TAB + g.TAB5_USBC_Y
     width = g.PLUG[1]
     return box(*sorted((edge, edge + out * g.PLUG[0])), v - width / 2, v + width / 2,
-               g.CHANNEL[1] + 0.2, -0.2)
+               g.CHANNEL_W[1] + 0.2, -0.2)
+
+
+FACE_INV = np.hstack([g.FACE[:, :3].T, (-g.FACE[:, :3].T @ g.FACE[:, 3])[:, None]])
+
+
+def moved(part, local_motion):
+    """Apply a local (u, v, w) motion, such as g.tab5_motion(), to a global part."""
+    return part.transform(g.compose(g.FACE, g.compose(local_motion, FACE_INV)))
+
+
+def moved_points(points, local_motion):
+    m = g.compose(g.FACE, g.compose(local_motion, FACE_INV))
+    return points @ m[:, :3].T + m[:, 3]
+
+
+def tab5_removal_path(steps=8):
+    """(phase, local motion) samples along the Tab5's way out of its slot."""
+    path = [("tilt", g.tab5_motion(t)) for t in np.linspace(0, g.TAB5_TILT_IN, steps + 1)]
+    path += [("slide", g.tab5_motion(g.TAB5_TILT_IN, s))
+             for s in np.linspace(0, g.TAB5_SLIDE, steps + 1)[1:]]
+    path += [("lift", g.tab5_motion(g.TAB5_TILT_IN, g.TAB5_SLIDE, lift))
+             for lift in np.linspace(0, 30, steps + 1)[1:]]
+    return path
 
 
 def read_stl(path):
