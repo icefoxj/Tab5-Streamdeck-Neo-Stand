@@ -124,6 +124,15 @@ def main():
     render(stand, IMAGES / "stand_front.png", elev=24, azim=-35)
     render(stand, IMAGES / "stand_back.png", elev=24, azim=145)
     render(stand + devices, IMAGES / "stand_side.png", elev=0, azim=-90, width=800)
+    # Speaker channel: the stand cut open 8 mm behind the face, seen square to the face.
+    s0, s1 = g.tab5_range(*g.TAB5_SPEAKER_X)
+    a, b = sorted((s0 - 12, -g.PLUG_SIDE * (g.WIDTH / 2 + 5)))
+    window = d.box(a, b, g.NEO_TOP - 10, g.V_TAB + 12, -40, -8)
+    grille = d.box(s0, s1, g.V_TAB, g.V_TAB + 1.5, -10, -6)
+    render([(d.manifold_triangles(g.build() ^ window), STAND),
+            (d.manifold_triangles(grille), "#3b6fb6")],
+           IMAGES / "speaker_channel.png", elev=90 - g.TILT, azim=0, width=900)
+
     # How the Tab5 goes in: plug side first, hooked under the frame, then laid down.
     tilted = tab5_mockup(g.tab5_motion(g.TAB5_TILT_IN))
     render(stand + tilted + neo_mockup(), IMAGES / "tab5_insertion.png", elev=12, azim=62)

@@ -13,13 +13,17 @@ A 3D-printable desk stand that holds an **M5Stack Tab5** (landscape) and an **El
 - **Tab5 slot with R4 corners** that match the Tab5's rounded corners. The frame is the same 20 mm on the sides and at the top.
 - **Hidden USB-C plug.** The Tab5 goes in tilted, with its plug side first. The 90° plug on its left edge hooks into a channel under the frame, then the other side drops into the slot. Nothing of the plug or its cable shows from the front.
 - **NP-F550 battery (Tab5 Kit).** The battery protrudes 14.7 mm from the back of the Tab5 and fits into a notch behind the slot. The Tab5 also fits without the battery.
-- **Speaker port.** A port right below the speaker (on the Tab5's bottom edge, at the right) vents the sound forward through the face.
+- **Side-firing speaker channel.** The Tab5's speaker sits on its bottom edge, at the right. Its sound drops through an opening under the grille into a channel hidden inside the band between the two slots. A 45° ramp at the channel's closed end turns the sound towards an exit in the right side of the stand, so the front stays closed.
 - **Hidden cables.** The body is hollow. Both cables go through openings in the slot floors and leave through an opening at the back, at desk level.
 - Recesses for four 10 mm stick-on rubber feet.
 
 | Front | Back | Side | Tab5 going in |
 |---|---|---|---|
 | ![Front](images/stand_front.png) | ![Back](images/stand_back.png) | ![Side](images/stand_side.png) | ![Tab5 going in](images/tab5_insertion.png) |
+
+The speaker channel, with the stand cut open 8 mm behind the face. The grille is shown in blue. Sound goes down through the opening, the 45° ramp turns it, and it leaves through the right side:
+
+![Speaker channel](images/speaker_channel.png)
 
 ## Printing
 
@@ -30,8 +34,8 @@ A 3D-printable desk stand that holds an **M5Stack Tab5** (landscape) and an **El
 | Material | PLA or PETG |
 | Layer height | 0.2 mm (0.15 mm gives cleaner slot ceilings) |
 | Walls / infill | 3+ perimeters, 15% infill |
-| Size | 168 × 146 × 181 mm |
-| Volume | 721 cm³ as a solid. The frame around the slots is solid in the model, so most of it prints as infill. |
+| Size | 168 × 148 × 185 mm |
+| Volume | 745 cm³ as a solid. The frame around the slots is solid in the model, so most of it prints as infill. |
 
 **About overhangs:**
 - **Slot top walls.** These are the only steep overhangs. To keep the devices flush, the top wall of each slot has to stay square to the face, which makes it a 60° overhang: about 25 cm² for the Neo slot and 15 cm² for the Tab5 slot. Both walls sit hidden behind the devices, and most printers handle 60° fine with good part cooling. If yours struggles, paint support enforcers on those two walls in your slicer.
@@ -92,7 +96,8 @@ Main parameters, at the top of `generate_stand.py`:
 | `CLEAR` | 0.6 | Gap around each device in its slot (lets the Tab5 tilt in) |
 | `SIDE` | 20 | Frame around the Tab5, at the sides and at the top |
 | `BOTTOM`, `NEO_Z` | 6.5, 18 | Frame below the Neo, and the Neo's height above the desk |
-| `SPEAKER_PORT` | 7 | Height of the speaker port below the Tab5 |
+| `SPEAKER_DUCT` | 10 × 18 | Speaker channel: height at the front × depth (its roof slopes down going deeper) |
+| `DUCT_SKIN`, `DUCT_WALL` | 4, 2 | Face material in front of the channel; walls between the channel and the slots |
 | `PLUG`, `PLUG_CLEAR` | 13 × 13 × 7, 0.8 | 90° USB-C plug size, and its clearance in the hidden channel |
 | `TAB5_TILT_IN` | 20 | Tilt the Tab5 goes in at; the channel is sized from this motion |
 | `BATTERY_SWING` | 3 | Extra room in the battery notch for the battery to swing out |
@@ -103,7 +108,8 @@ Main parameters, at the top of `generate_stand.py`:
 
 - The solid is manifold, and the STL has no coincident vertices or zero-area triangles.
 - Nothing intersects the Tab5, the battery, the 90° plug and its cable, the Neo, or the Neo's cable.
-- The air path from the speaker grille out through the face is clear.
+- The air path from the speaker grille, down into the channel and out of the side exit, is clear.
+- The front of the speaker channel is fully closed.
 - There is no material in front of either device's outline, so both are fully visible and flush.
 - The face material fully covers the USB-C plug, so it is hidden from the front.
 - The Tab5, with its battery and the plug attached, can tilt into and out of its slot along the path described in Assembly without touching the stand.

@@ -72,8 +72,9 @@ CLEAR = 0.6           # gap around each device in its slot (lets the Tab5 tilt i
 SIDE = 20.0           # frame around the Tab5 (sides and top); the plug side hides the plug
 BOTTOM = 6.5          # frame below the Neo
 NEO_Z = 18.0          # height of the Neo's bottom front edge above the desk
-STRIP = 3.0           # frame between the Neo slot and the speaker port
-SPEAKER_PORT = 7.0    # speaker port height below the Tab5 (it opens to the front)
+SPEAKER_DUCT = (10.0, 18.0)  # hidden channel from the Tab5 speaker to the side: height, depth
+DUCT_SKIN = 4.0       # face material in front of the channel (the front stays closed)
+DUCT_WALL = 2.0       # material between the channel and each slot
 REAR_LEAN = 8.0       # rear foot sticks out this much further back than the top
 MAX_OVERHANG = 40.0   # steepest printed overhang, degrees from vertical
 
@@ -101,7 +102,10 @@ A = (0.0, NEO_Z)                         # (Y, Z) of the Neo's bottom front edge
 NEO_W = 2 * max(u for u, _ in NEO_OUTLINE_RIGHT)
 NEO_H = max(v for _, v in NEO_OUTLINE_RIGHT)
 NEO_TOP = NEO_H + CLEAR                  # top edge of the Neo slot
-V_TAB = NEO_TOP + STRIP + SPEAKER_PORT   # bottom edge of the Tab5
+V_TAB = NEO_TOP + DUCT_WALL + SPEAKER_DUCT[0] + DUCT_WALL + CLEAR  # bottom edge of the Tab5
+DUCT_FLOOR = NEO_TOP + DUCT_WALL         # speaker channel, between the two slots
+DUCT_ROOF = V_TAB - CLEAR - DUCT_WALL    # its roof at the front; it slopes down going deeper
+DUCT_W = (-DUCT_SKIN - SPEAKER_DUCT[1], -DUCT_SKIN)
 V_TOP = V_TAB + TAB5_H                   # top edge of the Tab5
 V_FACE_TOP = V_TOP + SIDE                # top of the face: same frame as at the sides
 PLUG_SIDE = 1 if TAB5_MIRROR else -1     # the Tab5 edge with the USB-C port is at -u
@@ -270,6 +274,37 @@ def cavity():
     return hollow - side_prism(band(-500, 500, -LOWER_DEPTH - 1, 500), n0 - WALL, n1 + WALL)
 
 
+def speaker_duct():
+    """Hidden channel that carries the Tab5 speaker's sound out of the side of the stand.
+
+    The grille, on the Tab5's bottom edge, fires down the slope through an opening in
+    the slot floor into a channel inside the band between the slots. A 45° ramp at the
+    channel's closed end, under the grille, turns the sound towards the side exit. The
+    front of the band stays closed. The channel's roof leans in as it gets deeper, so it
+    prints without support.
+    """
+    s0, s1 = tab5_range(*TAB5_SPEAKER_X)
+    side = -PLUG_SIDE                       # away from the plug: the side nearer the grille
+    inner = (s0 if side > 0 else s1) - side  # closed end of the channel, under the grille
+    outer = side * (WIDTH / 2 + 2)          # out through the side wall
+    w0, w1 = DUCT_W
+    section = CrossSection([ccw([(DUCT_FLOOR, w0), (DUCT_FLOOR, w1), (DUCT_ROOF, w1),
+                                 (DUCT_ROOF - (w1 - w0) * RUN_PER_RISE, w0)])])
+    duct = slope_prism(section, *sorted((inner, outer)))
+    # 45° ramp from the roof at the closed end down to the floor, facing the exit.
+    rise = DUCT_ROOF - DUCT_FLOOR
+    ramp = CrossSection([ccw([(inner - side, DUCT_ROOF + 1), (inner + side * (rise + 1), DUCT_FLOOR - 1),
+                              (inner - side, DUCT_FLOOR - 1)])])
+    duct = duct - face_cut(ramp, w0 - 1, w1 + 1)
+    # Opening in the slot floor right under the grille, down to the channel's roof.
+    a, b = (-TAB5_T + d for d in TAB5_SPEAKER_DEPTH)
+    a, b = a - 1, b + 1
+    roof_a, roof_b = (DUCT_ROOF - (w1 - w) * RUN_PER_RISE - 0.1 for w in (a, b))
+    opening = CrossSection([ccw([(roof_a, a), (V_TAB, a), (V_TAB, b), (roof_b, b)])])
+    u0, u1 = (s0 - 0.5, s1 + 1) if side > 0 else (s0 - 1, s1 + 0.5)  # keeps the ramp's crest
+    return duct + slope_prism(opening, u0, u1)
+
+
 def cutouts():
     cuts = []
     # Neo: slot cut to its outline, flush with the face, and a cable hole in its floor.
@@ -291,11 +326,7 @@ def cutouts():
                                (v_end + (shallow - BATTERY_W) * RUN_PER_RISE, shallow),
                                (LOWER_TOP - 2, shallow)])])
     cuts.append(slope_prism(notch, n0, n1))
-    # Speaker port: the grille on the Tab5's bottom edge vents forward through the face.
-    s0, s1 = tab5_range(*TAB5_SPEAKER_X)
-    grille_back = -TAB5_T + TAB5_SPEAKER_DEPTH[0] - 1.0
-    cuts.append(face_cut(rounded_rect(s0 - 1, V_TAB - SPEAKER_PORT, s1 + 1, V_TAB + 2, 2),
-                         grille_back, 5))
+    cuts.append(speaker_duct())
 
     # Channel for the 90° USB-C plug, under the frame beside the slot and running under
     # the Tab5's edge: it holds every position the plug passes through as the Tab5 tilts

@@ -84,10 +84,20 @@ def tab5_outline():
 
 
 def speaker_path():
-    """Air from the speaker grille out through the face (must stay empty)."""
+    """Air from the speaker grille down into the channel and out of the side (must stay empty)."""
     u0, u1 = g.tab5_range(*g.TAB5_SPEAKER_X)
-    back = -g.TAB5_T + g.TAB5_SPEAKER_DEPTH[0]
-    return box(u0, u1, g.V_TAB - g.SPEAKER_PORT + 0.5, g.V_TAB, back, 0.01)
+    back, front = (-g.TAB5_T + d for d in g.TAB5_SPEAKER_DEPTH)
+    down = box(u0, u1, g.DUCT_ROOF, g.V_TAB, back, front)
+    along = box(*sorted((u1 if g.PLUG_SIDE < 0 else u0, -g.PLUG_SIDE * (g.WIDTH / 2 + 1))),
+                g.DUCT_FLOOR + 0.5, g.DUCT_FLOOR + 3, back, front)
+    return down + along
+
+
+def speaker_cover():
+    """Face material in front of the speaker channel (must be fully solid: no front port)."""
+    u0, u1 = g.tab5_range(*g.TAB5_SPEAKER_X)
+    a, b = sorted((u0 - 1 if g.PLUG_SIDE < 0 else u1 + 1, -g.PLUG_SIDE * (g.WIDTH / 2 - 3)))
+    return box(a, b, g.DUCT_FLOOR, g.V_TAB - g.CLEAR - 0.1, g.DUCT_W[1] + 0.2, -0.2)
 
 
 def plug_cover():

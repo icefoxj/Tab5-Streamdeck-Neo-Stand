@@ -63,7 +63,7 @@ def main():
         "90° USB-C plug + cable": d.usb_plug(),
         "Stream Deck Neo (stand folded)": d.neo(),
         "Neo cable into the body": d.neo_cable(),
-        "speaker grille -> port in the face": d.speaker_path(),
+        "speaker grille -> channel -> side exit": d.speaker_path(),
         "nothing in front of the Tab5": d.in_front(d.tab5_outline()),
         "nothing in front of the Neo": d.in_front(g.neo_outline()),
     }
@@ -74,6 +74,9 @@ def main():
     cover = d.plug_cover()
     gap = max(0.0, cover.volume() - (stand ^ cover).volume())
     report(gap < TOLERANCE_MM3, f"USB-C plug hidden behind the face: {gap:.2f} mm3 open in front of it")
+    cover = d.speaker_cover()
+    gap = max(0.0, cover.volume() - (stand ^ cover).volume())
+    report(gap < TOLERANCE_MM3, f"speaker channel closed at the front: {gap:.2f} mm3 open in front of it")
 
     # The Tab5 goes in tilted with the plug attached (and comes out the same way when the
     # stand is tipped forward). Walk that path and make sure nothing hits the stand.

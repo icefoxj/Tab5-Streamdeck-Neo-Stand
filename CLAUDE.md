@@ -39,7 +39,10 @@ After any geometry change, run all three and commit the STL and images together 
   - The Tab5 tilts by `TAB5_TILT_IN` about its plug-side front edge (`tab5_motion()`), with the plug hooked under the frame, then it slides by `TAB5_SLIDE`.
   - `CHANNEL_U` and `CHANNEL_W` are computed from that sweep. The slot clearance and `BATTERY_SWING` are what let the body and the battery rotate.
   - `check_fit` walks the path (`devices.tab5_removal_path()`) and verifies that the face covers the plug. If you change the slot, the plug or the battery, re-run it.
-- **Speaker:** the Tab5 grille is on its bottom edge at x 91.5–110.5. It vents through `SPEAKER_PORT` in the face.
+- **Speaker (user request):** the front must stay closed. The Tab5 grille is on its bottom edge at x 91.5–110.5.
+  - The sound drops through an opening in the slot floor into `speaker_duct()`, a channel in the band between the slots.
+  - A 45° ramp in the u–v plane at the channel's closed end, under the grille, turns the sound towards the side away from the plug, and it exits through the side wall.
+  - `check_fit` verifies that the path is clear and that the front is closed.
 - **Printable upright without support:** keep surfaces within `MAX_OVERHANG` (40°):
   - Holes in sloped floors go through `face_hole()`, a vertical sweep.
   - Upper ends of recesses lean inward by `RUN_PER_RISE`.
