@@ -51,13 +51,16 @@ def topology(manifold):
 
 
 def read_3mf(path):
-    """{part name: (vertices, triangles)} for every mesh object in a 3MF file."""
+    """{part name: (vertices, triangles, (colour name, "#RRGGBB"))} for every mesh object
+    in a 3MF file."""
     model = zipfile.ZipFile(path).read("3D/3dmodel.model").decode()
+    bases = re.findall(r'<base name="([^"]*)" displaycolor="(#[0-9A-F]{6})[0-9A-F]{2}"/>', model)
     parts = {}
-    for name, body in re.findall(r'<object id="\d+" name="([^"]*)" type="model"><mesh>(.*?)</mesh>', model):
+    for name, index, body in re.findall(r'<object id="\d+" name="([^"]*)" type="model" pid="1" '
+                                        r'pindex="(\d+)"><mesh>(.*?)</mesh>', model):
         verts = np.array(re.findall(r'<vertex x="([^"]+)" y="([^"]+)" z="([^"]+)"/>', body), float)
         tris = np.array(re.findall(r'<triangle v1="(\d+)" v2="(\d+)" v3="(\d+)"/>', body), int)
-        parts[name] = verts, tris
+        parts[name] = verts, tris, bases[int(index)]
     return parts
 
 
@@ -182,15 +185,16 @@ def main():
            f"{MIN_FEATURE_V} mm up it ({lost:.2f} mm2 thinner, {filled:.2f} mm2 narrower)")
     print(f"       ornament: {inlay.volume():.0f} mm3, in {g.colour_layers(inlay)} of the 0.2 mm layers")
 
-    # The written 3MF: one closed mesh per part, matching the model.
+    # The written 3MF: one closed mesh per part, matching the model, in its colour.
     parts = read_3mf(g.OUT_3MF)
-    volumes = {name: closed_volume(*mesh) for name, mesh in parts.items()}
+    volumes = {name: closed_volume(verts, tris) for name, (verts, tris, _) in parts.items()}
     expected = {"stand": body.volume(), "ornament": inlay.volume()}
     report(volumes.keys() == expected.keys()
            and all(volumes[k] is not None and abs(volumes[k] - expected[k]) < TOLERANCE_MM3
-                   for k in expected),
+                   and parts[k][2] == g.COLOURS[k] for k in expected),
            f"{g.OUT_3MF.name}: closed meshes " + ", ".join(
-               f"{k} {v / 1000:.3f} cm3" if v is not None else f"{k} open" for k, v in volumes.items()))
+               (f"{k} {v / 1000:.3f} cm3" if v is not None else f"{k} open") + f" ({parts[k][2][0].lower()})"
+               for k, v in volumes.items()))
 
     lo, hi = np.array(stand.bounding_box()).reshape(2, 3)
     print(f"       size {hi[0] - lo[0]:.1f} x {hi[1] - lo[1]:.1f} x {hi[2] - lo[2]:.1f} mm")

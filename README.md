@@ -48,8 +48,8 @@ The speaker channel, with the stand cut open 8 mm behind the face. The grille is
 
 The 3MF holds the same stand in two parts, for printers that change filament within a layer: a multi-material unit such as Creality's CFS, Bambu's AMS or Prusa's MMU, or a printer with two extruders.
 
-- **`stand`:** the stand, with the livery recessed 0.6 mm into the face.
-- **`ornament`:** the inlay that fills the recess, flush with the face.
+- **`stand`:** the stand, with the livery recessed 0.6 mm into the face. Meant for black.
+- **`ornament`:** the inlay that fills the recess, flush with the face. Meant for yellow.
 
 The livery is made of straight lines and 45° cuts, in the style of the markings on anime mechs:
 - **Title bar over the Tab5.** Corner brackets joined by rules to a "CONTROL DECK" caption.
@@ -64,8 +64,8 @@ The lettering uses a small chamfered stroke font, `mech_font.py`.
 ![Livery, seen square to the face](images/ornament.png)
 
 **Printing it:**
-1. Open the 3MF in your slicer. It loads as one object made of the two parts. The file was written to the basic 3MF spec, so it carries no filament assignments.
-2. Give the `ornament` part your second filament.
+1. Open the 3MF in your slicer. It loads as one object made of the two parts. The file follows the basic 3MF spec: it stores black and yellow as the parts' display colours, but no filament assignments, and slicers may ignore those colours.
+2. Give the `stand` part your black filament and the `ornament` part your yellow one.
 3. Print as usual, upright, without supports. 0.15 mm layers make the lettering crisper.
 
 **Filament changes:** the livery sits in three horizontal rows, at Z 13.6–20.8, 84.4–96.6 and 164.0–175.4 mm. That is 148 of the 0.2 mm layers. Each of those layers needs two filament changes, about 300 in all. To cut the waste, use your slicer's options to flush into the infill or into the object. To print without changes, use the one-colour STL.
@@ -138,6 +138,7 @@ Main parameters, at the top of `generate_stand.py`:
 | `TAB5_MIRROR` | `False` | Mirrors the Tab5 features, if your USB-C is on the other side |
 | `ORNAMENT_DEPTH` | 0.6 | How deep the livery is inlaid into the face |
 | `ORNAMENT_GAP` | 1.8 | Livery clearance from the slot edges and the rounded outer edges |
+| `COLOURS` | black, yellow | Display colours stored in the 3MF for the stand and the livery |
 
 The livery itself is drawn in `ornament()`, in face coordinates. The font covers only the characters in `mech_font.GLYPHS`.
 
@@ -155,7 +156,7 @@ The livery itself is drawn in `ornament()`, in face coordinates. The font covers
   - The two parts are clean manifolds. They don't overlap, and together they make up exactly the one-colour stand.
   - The inlay is 0.6 mm deep everywhere, so it never thins out over a rounded edge or a slot.
   - Every stroke and gap is wide enough to print.
-  - Read back, the 3MF holds two closed meshes whose volumes match the model.
+  - Read back, the 3MF holds two closed meshes whose volumes match the model, each with its colour.
 
 For the preview renders, the scripts download M5Stack's official Tab5 model into `.cache/` (from the M5_Hardware repository). It is not part of this repository.
 

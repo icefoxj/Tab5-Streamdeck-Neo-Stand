@@ -51,6 +51,7 @@ After any geometry change, run all three and commit the STL, the 3MF and the ima
 - **Two-colour livery (user request):** a mech-style ornament on the face, as on anime mechs: straight lines, 45° cuts, stripes and inscriptions. It is inlaid `ORNAMENT_DEPTH` (0.6 mm, as requested) into the wall as a separate part, in a 3MF, for the user's Creality printer with a CFS.
   - `ornament()` draws it in (u, v), and `build_parts()` returns the stand minus the recess and the stand ∩ recess, so the two parts fit exactly. The STL stays one colour and unchanged.
   - `write_3mf()` writes core 3MF (2015/02) with no slicer extensions: one named mesh per part (`stand`, `ornament`) grouped in one object. Creality Print loads that as one object with two parts. Filaments are assigned in the slicer.
+  - Colours (user request): a black stand with yellow lettering and markings. `COLOURS` stores them in the 3MF as core base materials, as a hint the slicer may ignore. The renders use the same scheme, with the black lifted a little so the shading shows.
   - The lettering comes from `mech_font.py`, a stroked, chamfered font with only the glyphs used so far. Add glyphs to `GLYPHS` as needed.
   - Strokes and gaps must be at least 1.4 mm across the slope (u) and 0.7 mm up it (v). Printed upright, each layer cuts the inlay into a strip about 0.7 mm wide. `check_fit` measures this.
   - Keep at least `ORNAMENT_GAP` from the slot edges and the rounded outer edges. `check_fit` verifies that the inlay is full depth everywhere.

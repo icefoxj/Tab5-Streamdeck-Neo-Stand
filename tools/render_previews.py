@@ -15,8 +15,8 @@ import devices as d  # noqa: E402
 from devices import g  # noqa: E402
 
 IMAGES = d.ROOT / "images"
-STAND = "#e8833a"
-ORNAMENT = "#26292e"  # the livery, printed in a second filament
+STAND = "#3a3c41"     # black filament, lifted a little so the shading shows
+ORNAMENT = "#f5c400"  # the livery, in yellow filament
 DARK = "#202226"
 GLASS = "#0d1b2a"
 KEY = "#3a3f47"

@@ -95,6 +95,7 @@ FOOT_D, FOOT_DEPTH, FOOT_INSET = 10.5, 1.0, 12.0  # recesses for stick-on rubber
 
 ORNAMENT_DEPTH = 0.6  # livery inlaid into the face as a second part, for a second filament
 ORNAMENT_GAP = 1.8    # livery to the slot edges and to the rounded outer edges
+COLOURS = {"stand": ("Black", "#1A1A1A"), "ornament": ("Yellow", "#FFD000")}  # 3MF display colours
 
 OUT = Path(__file__).parent / "stl" / "tab5_neo_stand.stl"
 OUT_3MF = Path(__file__).parent / "3mf" / "tab5_neo_stand_2color.3mf"
@@ -463,20 +464,28 @@ def write_stl(manifold, path):
 
 def write_3mf(parts, path, name):
     """Core 3MF, without slicer extensions: one named mesh per part, grouped into a single
-    object, so the slicer loads one object whose parts each take their own filament."""
+    object, so the slicer loads one object whose parts each take their own filament.
+
+    `parts` maps each part's name to (manifold, (colour name, "#RRGGBB")). The colours go
+    in as the core spec's base materials: a hint for the slicer, which may ignore them.
+    """
     model = ['<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" '
-             'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources>']
-    for i, (part_name, manifold) in enumerate(parts.items(), 1):
+             'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources>'
+             '<basematerials id="1">']
+    model += [f'<base name="{colour}" displaycolor="{rgb}FF"/>' for _, (colour, rgb) in parts.values()]
+    model.append('</basematerials>')
+    for i, (part_name, (manifold, _)) in enumerate(parts.items()):
         mesh = manifold.to_mesh()
-        model.append(f'<object id="{i}" name="{part_name}" type="model"><mesh><vertices>')
+        model.append(f'<object id="{i + 2}" name="{part_name}" type="model" pid="1" pindex="{i}">'
+                     '<mesh><vertices>')
         model += [f'<vertex x="{x:.5f}" y="{y:.5f}" z="{z:.5f}"/>'
                   for x, y, z in np.asarray(mesh.vert_properties)[:, :3]]
         model.append('</vertices><triangles>')
         model += [f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in np.asarray(mesh.tri_verts)]
         model.append('</triangles></mesh></object>')
-    group = len(parts) + 1
+    group = len(parts) + 2
     model.append(f'<object id="{group}" name="{name}" type="model"><components>')
-    model += [f'<component objectid="{i}"/>' for i in range(1, group)]
+    model += [f'<component objectid="{i}"/>' for i in range(2, group)]
     model.append(f'</components></object></resources><build><item objectid="{group}"/></build></model>')
     types = ('<?xml version="1.0" encoding="UTF-8"?>\n'
              '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
@@ -503,7 +512,8 @@ def main():
           f"{z1 - z0:.1f} mm, {stand.volume() / 1000:.0f} cm3, {stand.num_tri()} triangles, "
           f"genus {stand.genus()}")
     body, inlay = build_parts(stand)
-    write_3mf({"stand": body, "ornament": inlay}, OUT_3MF, "Tab5 Neo stand")
+    write_3mf({"stand": (body, COLOURS["stand"]), "ornament": (inlay, COLOURS["ornament"])},
+              OUT_3MF, "Tab5 Neo stand")
     print(f"{OUT_3MF.relative_to(root)}: stand + ornament ({inlay.volume():.0f} mm3, "
           f"{ORNAMENT_DEPTH} mm deep, in {colour_layers(inlay)} of the 0.2 mm layers)")
 
