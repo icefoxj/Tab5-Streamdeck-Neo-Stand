@@ -22,22 +22,19 @@ KEY = "#3a3f47"
 
 
 def neo_mockup():
-    """Neo body with its 2 x 4 LCD keys and info bar, enough to read the layout."""
-    parts = [(d.neo(), DARK)]
-    key, pitch = 17.0, 22.0
-    for row, v in enumerate((g.NEO_H - 30, g.NEO_H - 52)):
-        for col in range(4):
-            u = (col - 1.5) * pitch
-            parts.append((d.box(u - key / 2, u + key / 2, v, v + key, g.NEO_T - 0.5, g.NEO_T + 0.6, r=2), KEY))
-    parts.append((d.box(-30, 30, 8, 16, g.NEO_T - 0.5, g.NEO_T + 0.4, r=2), GLASS))
+    """Neo body (real outline) with its 2 x 4 LCD keys and info bar, as in Elgato's render."""
+    parts = [(d.neo(), "#e9eaec")]
+    for v in (36.8, 56.0):
+        for u in (-29.4, -9.8, 9.7, 29.2):
+            parts.append((d.box(u - 8.3, u + 8.3, v - 8.3, v + 8.3, -0.5, 0.6, r=2.5), KEY))
+    parts.append((d.box(-17.9, 17.9, 16.4, 24.5, -0.5, 0.4, r=1.5), GLASS))
     return [(d.manifold_triangles(m), c) for m, c in parts]
 
 
 def tab5_mockup():
-    u0, u1 = d.tab5_x_range(0, g.TAB5_W)
-    front = g.STEP + g.TAB5_T
-    glass = d.box(u0, u1, g.V_TAB, g.V_TOP, front - 0.3, front + 0.05, r=4)
-    screen = d.box(u0 + 9, u1 - 9, g.V_TAB + 9, g.V_TOP - 9, front, front + 0.15)
+    u0, u1 = g.tab5_range(0, g.TAB5_W)
+    glass = d.box(u0, u1, g.V_TAB, g.V_TOP, -0.3, 0.05, r=g.TAB5_R)
+    screen = d.box(u0 + 9, u1 - 9, g.V_TAB + 9, g.V_TOP - 9, 0, 0.15)
     return [(d.tab5_reference_triangles(), "#2b2e33"),
             (d.manifold_triangles(glass), DARK),
             (d.manifold_triangles(screen), "#24476b"),
@@ -126,6 +123,7 @@ def main():
     render(stand, IMAGES / "stand_front.png", elev=24, azim=-35)
     render(stand, IMAGES / "stand_back.png", elev=24, azim=145)
     render(stand + devices, IMAGES / "stand_side.png", elev=0, azim=-90, width=800)
+    render(stand + devices, IMAGES / "stand_top.png", elev=70, azim=-20)
 
 
 if __name__ == "__main__":

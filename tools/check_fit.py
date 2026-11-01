@@ -4,7 +4,7 @@
 """
 
 import sys
-from math import cos, radians
+from math import cos, radians, sin
 
 import numpy as np
 
@@ -57,23 +57,28 @@ def main():
            f"clean STL topology ({len(mesh.vert_properties) - len(corners)} coincident vertices, "
            f"{tiny.sum()} zero-area triangles)")
 
-    tab5_u0, tab5_u1 = d.tab5_x_range(0, g.TAB5_W)
     must_be_empty = {
         "Tab5 body": d.tab5(),
         "NP-F550 battery": d.battery(),
         "90° USB-C plug + cable": d.usb_plug(),
         "Stream Deck Neo (stand folded)": d.neo(),
         "Neo cable into the body": d.neo_cable(),
-        "speaker grille -> sound gap": d.speaker_path(),
-        "nothing in front of the Tab5": d.front_projection(tab5_u0, tab5_u1, g.V_TAB, g.V_TOP, g.STEP),
-        "nothing in front of the Neo": d.front_projection(-g.NEO_W / 2, g.NEO_W / 2, 0, g.NEO_H, 0),
+        "speaker grille -> port in the face": d.speaker_path(),
+        "nothing in front of the Tab5": d.in_front(d.tab5_outline()),
+        "nothing in front of the Neo": d.in_front(g.neo_outline()),
     }
     for name, envelope in must_be_empty.items():
         clash = abs((stand ^ envelope).volume())
         report(clash < TOLERANCE_MM3, f"{name}: {clash:.2f} mm3 of overlap")
 
+    cover = d.plug_cover()
+    gap = cover.volume() - (stand ^ cover).volume()
+    report(gap < TOLERANCE_MM3, f"USB-C plug hidden behind the face: {gap:.2f} mm3 open in front of it")
+
     # Downward-facing surfaces steeper than 45° from vertical, ignoring the bed.
     # Flat ones are bridges and only need a short span; sloped ones would need support.
+    # The one accepted exception is the Neo slot's top wall: it has to stay square to the
+    # face to keep the Neo flush, which makes it a 60° overhang hidden behind the Neo.
     mesh = stand.to_mesh()
     verts = np.asarray(mesh.vert_properties)[:, :3]
     faces = np.asarray(mesh.tri_verts)
@@ -83,7 +88,13 @@ def main():
     nz = n[:, 2] / (2 * area + 1e-12)
     on_bed = tris[:, :, 2].max(axis=1) < 0.01
     bad = (nz < -cos(radians(45)) - 1e-6) & ~on_bed
-    for idx in surface_patches(faces, np.flatnonzero(bad)):
+    u, v, w = ((tris.mean(axis=1) - g.FACE[:, 3]) @ g.FACE[:, :3]).T
+    neo_top = ((v > g.NEO_H / 2) & (v < g.NEO_TOP + 0.3) & (w > -g.NEO_T - 0.1)
+               & (np.abs(u) < g.NEO_W / 2 + g.CLEAR + 0.1) & (-nz < sin(radians(60.5))))
+    known = bad & neo_top
+    report(known.any(), f"Neo slot top wall: {area[known].sum():.0f} mm2 at up to "
+           f"{np.degrees(np.arcsin(-nz[known].min())):.0f}° (accepted, hidden behind the Neo)")
+    for idx in surface_patches(faces, np.flatnonzero(bad & ~known)):
         pts = tris[idx].reshape(-1, 3)
         z = pts[:, 2].mean()
         if (nz[idx] < -0.999).all():

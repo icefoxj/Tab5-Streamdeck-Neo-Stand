@@ -16,7 +16,7 @@ TAB5_STL_URL = ("https://raw.githubusercontent.com/m5stack/M5_Hardware/master/"
                 "Products/C145_Tab5/Structures/Tab5.stl")
 TAB5_STL_CACHE = ROOT / ".cache" / "Tab5.stl"
 
-PLUG_LEN, PLUG_W, PLUG_T, CABLE_D = 13.0, 13.0, 7.0, 4.5  # generous 90° USB-C plug
+CABLE_D = 4.5
 
 
 def on_face(local):
@@ -27,55 +27,77 @@ def on_face(local):
 def box(u0, u1, v0, v1, w0, w1, r=0.0):
     section = g.rounded_rect(u0, v0, u1, v1, r) if r else \
         CrossSection.square((u1 - u0, v1 - v0)).translate((u0, v0))
-    return on_face(section.extrude(w1 - w0).translate((0, 0, w0)))
-
-
-def tab5_x_range(x0, x1):
-    return sorted((g.tab5_u(x0), g.tab5_u(x1)))
+    return g.face_cut(section, w0, w1)
 
 
 def tab5():
-    u0, u1 = tab5_x_range(0, g.TAB5_W)
-    return box(u0, u1, g.V_TAB, g.V_TOP, g.STEP, g.STEP + g.TAB5_T, r=4.0)
+    u0, u1 = g.tab5_range(0, g.TAB5_W)
+    return box(u0, u1, g.V_TAB, g.V_TOP, -g.TAB5_T, 0, r=g.TAB5_R)
 
 
 def battery():
     x0, y0, x1, y1 = g.TAB5_BATTERY
-    u0, u1 = tab5_x_range(x0, x1)
-    return box(u0, u1, g.V_TAB + y0, g.V_TAB + y1, g.STEP - g.TAB5_BATTERY_PROTRUSION, g.STEP)
+    u0, u1 = g.tab5_range(x0, x1)
+    w0 = -g.TAB5_T - g.TAB5_BATTERY_PROTRUSION
+    return box(u0, u1, g.V_TAB + y0, g.V_TAB + y1, w0, -g.TAB5_T)
+
+
+def usb_plug_head():
+    edge = g.tab5_u(0)
+    out = 1 if g.TAB5_MIRROR else -1
+    length, width, thick = g.PLUG
+    v = g.V_TAB + g.TAB5_USBC_Y
+    return box(*sorted((edge, edge + out * length)), v - width / 2, v + width / 2,
+               g.PLUG_W - thick / 2, g.PLUG_W + thick / 2)
 
 
 def usb_plug():
-    """90° USB-C plug on the Tab5's left edge with its cable heading into the stand."""
+    """90° USB-C plug on the Tab5's left edge, its cable heading back into the stand."""
     edge = g.tab5_u(0)
     out = 1 if g.TAB5_MIRROR else -1
-    u_far = edge + out * PLUG_LEN
+    u_cable = edge + out * (g.PLUG[0] - CABLE_D / 2 - 1)
     v = g.V_TAB + g.TAB5_USBC_Y
-    w = g.STEP + g.TAB5_USBC_DEPTH
-    head = box(*sorted((edge, u_far)), v - PLUG_W / 2, v + PLUG_W / 2, w - PLUG_T / 2, w + PLUG_T / 2)
-    u_cable = edge + out * (PLUG_LEN - CABLE_D / 2 - 1)
-    cable = on_face(Manifold.cylinder(w + 20, CABLE_D / 2).translate((u_cable, v, -20)))
-    return head + cable
+    w_end = -g.UPPER_DEPTH - 10  # well inside the hollow body
+    cable = on_face(Manifold.cylinder(g.PLUG_W - w_end, CABLE_D / 2)
+                    .translate((u_cable, v, w_end)))
+    return usb_plug_head() + cable
 
 
 def neo():
-    return box(-g.NEO_W / 2, g.NEO_W / 2, 0, g.NEO_H, 0, g.NEO_T, r=8.0)
+    return g.face_cut(g.neo_outline(), -g.NEO_T, 0)
 
 
 def neo_cable():
     """Neo's captive cable leaving the middle of its back, straight into the stand."""
-    return on_face(Manifold.cylinder(25, CABLE_D / 2).translate((0, g.NEO_H / 2, -25)))
+    return on_face(Manifold.cylinder(15, CABLE_D / 2)
+                   .translate((0, g.NEO_CABLE_V, -g.NEO_T - 15)))
 
 
-def front_projection(u0, u1, v0, v1, w_back):
-    """Everything in front of a device's back plane within its outline (must stay empty)."""
-    return box(u0, u1, v0, v1, w_back + 0.01, 200)
+def in_front(outline_uv):
+    """Everything in front of the face within a device outline (must stay empty)."""
+    return g.face_cut(outline_uv, 0.01, 200)
+
+
+def tab5_outline():
+    u0, u1 = g.tab5_range(0, g.TAB5_W)
+    return g.rounded_rect(u0, g.V_TAB, u1, g.V_TOP, g.TAB5_R)
 
 
 def speaker_path():
-    """Air between the speaker grille and the Neo's top edge (must stay empty)."""
-    u0, u1 = tab5_x_range(*g.TAB5_SPEAKER_X)
-    return box(u0, u1, g.NEO_H + 0.5, g.V_TAB - 0.01, g.STEP + 1.5, g.STEP + 7.5)
+    """Air from the speaker grille out through the face (must stay empty)."""
+    u0, u1 = g.tab5_range(*g.TAB5_SPEAKER_X)
+    back = -g.TAB5_T + g.TAB5_SPEAKER_DEPTH[0]
+    return box(u0, u1, g.V_TAB - g.SPEAKER_PORT + 0.5, g.V_TAB, back, 0.01)
+
+
+def plug_cover():
+    """Face material directly in front of the USB-C plug (must be fully solid)."""
+    edge = g.tab5_u(0) + (g.CLEAR if g.TAB5_MIRROR else -g.CLEAR)
+    out = 1 if g.TAB5_MIRROR else -1
+    v = g.V_TAB + g.TAB5_USBC_Y
+    width = g.PLUG[1]
+    return box(*sorted((edge, edge + out * g.PLUG[0])), v - width / 2, v + width / 2,
+               g.CHANNEL[1] + 0.2, -0.2)
 
 
 def read_stl(path):
@@ -98,7 +120,7 @@ def tab5_reference_triangles():
     tris = tris[tris[:, :, 1].mean(axis=1) > 0]
     x, y, z = tris[..., 0], tris[..., 1] - 0.9, tris[..., 2]  # screen at z = 0, back at z = -12
     u = np.vectorize(g.tab5_u)(x)
-    local = np.stack([u, g.V_TAB + y, g.STEP + g.TAB5_T + z], axis=-1)
+    local = np.stack([u, g.V_TAB + y, z], axis=-1)
     out = local @ g.FACE[:, :3].T + g.FACE[:, 3]
     return out[:, ::-1] if g.TAB5_MIRROR else out
 
