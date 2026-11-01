@@ -1,0 +1,7 @@
+# Official Tab5 model, downloaded on demand by tools/devices.py (not ours to redistribute)
+.cache/
+
+__pycache__/
+*.pyc
+.venv/
+venv/
