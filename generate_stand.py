@@ -1,12 +1,14 @@
 """Parametric desk stand for an M5Stack Tab5 (landscape) and an Elgato Stream Deck Neo.
 
-    python generate_stand.py            -> writes stl/tab5_neo_stand.stl
+    python generate_stand.py            -> writes stl/tab5_neo_stand.stl (one colour)
+                                           and 3mf/tab5_neo_stand_2color.3mf (two parts)
 
 Both devices sit in closed slots, flush with the front face of the stand. The Neo drops
 into a slot cut to its real outline. The Tab5 goes in tilted: its 90° USB-C plug hooks
 under the frame beside the slot first, then the far side drops in, so the plug stays
-hidden behind the face. Both cables run through the hollow body to a rear exit. All
-dimensions are in millimetres.
+hidden behind the face. Both cables run through the hollow body to a rear exit. The
+3MF adds a mech-style livery, inlaid into the face as a second part for a second
+filament. All dimensions are in millimetres.
 
 Output coordinates: X = width (left to right, seen from the front), Y = depth
 (front to back), Z = up. The stand prints upright, exactly as it sits on the desk.
@@ -17,11 +19,14 @@ Features are placed in the frame of the inclined face:
     w  out of the face, towards the user (0 = front face; slots go into negative w)
 """
 
+import zipfile
 from math import cos, radians, sin, tan
 from pathlib import Path
 
 import numpy as np
 from manifold3d import CrossSection, JoinType, Manifold, OpType, set_circular_segments
+
+import mech_font
 
 # --------------------------------------------------------------------------
 # Devices
@@ -88,7 +93,11 @@ NEO_HOLE = (40.0, 44.0)   # cable hole in the Neo slot floor: width, height
 REAR_EXIT = (56.0, 30.0)  # cable exit in the back wall: width, height
 FOOT_D, FOOT_DEPTH, FOOT_INSET = 10.5, 1.0, 12.0  # recesses for stick-on rubber feet
 
+ORNAMENT_DEPTH = 0.6  # livery inlaid into the face as a second part, for a second filament
+ORNAMENT_GAP = 1.8    # livery to the slot edges and to the rounded outer edges
+
 OUT = Path(__file__).parent / "stl" / "tab5_neo_stand.stl"
+OUT_3MF = Path(__file__).parent / "3mf" / "tab5_neo_stand_2color.3mf"
 
 # --------------------------------------------------------------------------
 # Derived geometry
@@ -367,6 +376,76 @@ def build():
     return outer_body() - cavity() - cutouts()
 
 
+def parallelogram(u0, u1, v0, v1, lean):
+    """Band v0..v1 between u0 and u1 (at v0); its ends lean `lean` per unit of v."""
+    k = (v1 - v0) * lean
+    return CrossSection([ccw([(u0, v0), (u1, v0), (u1 + k, v1), (u0 + k, v1)])])
+
+
+def ornament():
+    """Mech-style livery on the face, in (u, v): a striped band with a unit code
+    between the devices, markings on the frame above the Tab5, and hazard stripes in
+    the bottom corners."""
+    edge = WIDTH / 2 - EDGE_R - ORNAMENT_GAP
+    parts = []
+    # Main band between the slots, running out towards the speaker exit.
+    v0, v1 = NEO_TOP + ORNAMENT_GAP, V_TAB - CLEAR - ORNAMENT_GAP
+    rise = v1 - v0
+    x = -edge
+    for w in (2.0, 3.0, 4.5):                    # speed dashes
+        parts.append(parallelogram(x, x + w, v0, v1, 1.0))
+        x += w + 2.0
+    band = parallelogram(x, edge - rise, v0, v1, 1.0)
+    band -= mech_font.text("TN-60", x + 12, v0 + 2.0, rise - 4.0, 1.6)
+    for u in (-14.0, -10.0):                      # panel breaks, 1.6 mm wide at v0
+        band -= parallelogram(u - 1, u + 0.6, v0 - 1, v1 + 1, 1.0)
+    mid, arm = (v0 + v1) / 2, rise / 2 - 2.0
+    for i in range(3):                            # chevrons pointing at the speaker exit
+        c = edge - rise - 22 + i * 5.5
+        band -= mech_font.stroke([(c, mid + arm), (c + arm, mid), (c, mid - arm)], 1.8)
+    parts.append(band)
+    # Thin stripes under both ends of the band, outside the Neo's rounded top corners.
+    s1 = v0 - 1.8
+    s0 = s1 - 1.6
+    a = 58.0
+    stripe = CrossSection([ccw([(a, s0), (edge, s0), (edge, s1), (a - (s1 - s0), s1)])])
+    parts += [stripe, stripe.mirror((1, 0))]
+
+    # Title bar over the Tab5: corner brackets joined by rules to a centred caption.
+    t, cap = 1.6, 6.0
+    gap = ORNAMENT_GAP + cap / 2 + 0.2           # caption clears the slot by the usual gap
+    cu, cv = TAB5_W / 2 + CLEAR + gap, V_TOP + CLEAR + gap
+    title = "CONTROL DECK"
+    half = mech_font.text_width(title, cap, 1.5) / 2
+    parts.append(mech_font.text(title, -half, cv - cap / 2, cap, 1.5))
+    for sgn in (-1, 1):
+        parts.append(mech_font.stroke([(sgn * cu, cv - 9), (sgn * cu, cv - 3), (sgn * (cu - 3), cv),
+                                       (sgn * (half + 4), cv)], t))
+
+    # Hazard stripes in the bottom corners, beside the Neo. The rounding of the face's
+    # bottom edge reaches about 0.4 mm up the face.
+    h0 = -CLEAR - BOTTOM + 0.5 + ORNAMENT_GAP
+    for i in range(5):
+        x = edge - 8.0 - (5 - i) * 4.6
+        bar = parallelogram(x, x + 2.3, h0, h0 + 8.0, 1.0)
+        parts += [bar, bar.mirror((1, 0))]
+    return CrossSection.batch_boolean(parts, OpType.Add)
+
+
+def build_parts(stand=None):
+    """Two-filament version: the stand with the livery recessed into its face, and the
+    inlay that fills the recess flush with the face."""
+    stand = build() if stand is None else stand
+    recess = face_cut(ornament(), -ORNAMENT_DEPTH, 1.0)
+    return stand - recess, stand ^ recess
+
+
+def colour_layers(part, layer=0.2):
+    """How many print layers of the given height contain some of the part."""
+    top = part.bounding_box()[5]
+    return sum(part.slice(z).area() > 0 for z in np.arange(layer / 2, top, layer))
+
+
 def write_stl(manifold, path):
     mesh = manifold.to_mesh()
     verts = np.asarray(mesh.vert_properties, dtype=np.float32)[:, :3]
@@ -382,13 +461,51 @@ def write_stl(manifold, path):
         f.write(record.tobytes())
 
 
+def write_3mf(parts, path, name):
+    """Core 3MF, without slicer extensions: one named mesh per part, grouped into a single
+    object, so the slicer loads one object whose parts each take their own filament."""
+    model = ['<?xml version="1.0" encoding="UTF-8"?>\n<model unit="millimeter" xml:lang="en-US" '
+             'xmlns="http://schemas.microsoft.com/3dmanufacturing/core/2015/02"><resources>']
+    for i, (part_name, manifold) in enumerate(parts.items(), 1):
+        mesh = manifold.to_mesh()
+        model.append(f'<object id="{i}" name="{part_name}" type="model"><mesh><vertices>')
+        model += [f'<vertex x="{x:.5f}" y="{y:.5f}" z="{z:.5f}"/>'
+                  for x, y, z in np.asarray(mesh.vert_properties)[:, :3]]
+        model.append('</vertices><triangles>')
+        model += [f'<triangle v1="{a}" v2="{b}" v3="{c}"/>' for a, b, c in np.asarray(mesh.tri_verts)]
+        model.append('</triangles></mesh></object>')
+    group = len(parts) + 1
+    model.append(f'<object id="{group}" name="{name}" type="model"><components>')
+    model += [f'<component objectid="{i}"/>' for i in range(1, group)]
+    model.append(f'</components></object></resources><build><item objectid="{group}"/></build></model>')
+    types = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+             '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+             '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+             '<Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/>'
+             '</Types>')
+    rels = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+            '<Relationship Target="/3D/3dmodel.model" Id="rel0" '
+            'Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>')
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        z.writestr("[Content_Types].xml", types)
+        z.writestr("_rels/.rels", rels)
+        z.writestr("3D/3dmodel.model", "".join(model))
+
+
 def main():
+    root = Path(__file__).parent
     stand = build()
     write_stl(stand, OUT)
     (x0, y0, z0), (x1, y1, z1) = np.array(stand.bounding_box()).reshape(2, 3)
-    print(f"{OUT.relative_to(Path(__file__).parent)}: {x1 - x0:.1f} x {y1 - y0:.1f} x "
+    print(f"{OUT.relative_to(root)}: {x1 - x0:.1f} x {y1 - y0:.1f} x "
           f"{z1 - z0:.1f} mm, {stand.volume() / 1000:.0f} cm3, {stand.num_tri()} triangles, "
           f"genus {stand.genus()}")
+    body, inlay = build_parts(stand)
+    write_3mf({"stand": body, "ornament": inlay}, OUT_3MF, "Tab5 Neo stand")
+    print(f"{OUT_3MF.relative_to(root)}: stand + ornament ({inlay.volume():.0f} mm3, "
+          f"{ORNAMENT_DEPTH} mm deep, in {colour_layers(inlay)} of the 0.2 mm layers)")
 
 
 if __name__ == "__main__":

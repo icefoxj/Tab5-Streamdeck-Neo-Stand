@@ -3,15 +3,22 @@
     python tools/check_fit.py
 """
 
+import re
 import sys
+import zipfile
 from math import cos, radians, sin
 
 import numpy as np
+from manifold3d import JoinType
 
 import devices as d
 from devices import g
 
 TOLERANCE_MM3 = 0.5
+# Narrowest livery stroke or gap. Printed upright, each layer cuts the 0.6 mm inlay into
+# thin strips, so across the slope (u) a feature has to span a few extrusion widths;
+# up the slope (v) it only needs a few layers.
+MIN_FEATURE_U, MIN_FEATURE_V = 1.4, 0.7
 
 
 def surface_patches(faces, selected):
@@ -35,6 +42,35 @@ def surface_patches(faces, selected):
     return sorted(groups.values(), key=lambda idx: faces[idx].min())
 
 
+def topology(manifold):
+    """(coincident vertices, zero-area triangles) once the mesh is reduced to positions."""
+    tris = d.manifold_triangles(manifold)
+    corners = np.unique(tris.reshape(-1, 3).round(5), axis=0)
+    tiny = np.linalg.norm(np.cross(tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0]), axis=1) < 1e-8
+    return len(manifold.to_mesh().vert_properties) - len(corners), int(tiny.sum())
+
+
+def read_3mf(path):
+    """{part name: (vertices, triangles)} for every mesh object in a 3MF file."""
+    model = zipfile.ZipFile(path).read("3D/3dmodel.model").decode()
+    parts = {}
+    for name, body in re.findall(r'<object id="\d+" name="([^"]*)" type="model"><mesh>(.*?)</mesh>', model):
+        verts = np.array(re.findall(r'<vertex x="([^"]+)" y="([^"]+)" z="([^"]+)"/>', body), float)
+        tris = np.array(re.findall(r'<triangle v1="(\d+)" v2="(\d+)" v3="(\d+)"/>', body), int)
+        parts[name] = verts, tris
+    return parts
+
+
+def closed_volume(verts, tris):
+    """Volume of a mesh, or None unless every edge is used once in each direction."""
+    edges = np.vstack([tris[:, [0, 1]], tris[:, [1, 2]], tris[:, [2, 0]]])
+    forward = {tuple(e) for e in edges}
+    if len(forward) != len(edges) or any((b, a) not in forward for a, b in forward):
+        return None
+    a, b, c = (verts[tris[:, i]] for i in range(3))
+    return float(np.einsum("ij,ij->i", a, np.cross(b, c)).sum() / 6)
+
+
 def main():
     stand = g.build()
     failures = 0
@@ -49,13 +85,9 @@ def main():
 
     # Slicers merge STL vertices by position, so touching geometry must not leave
     # coincident vertices or zero-area triangles behind.
-    tris = d.manifold_triangles(stand)
-    corners = np.unique(tris.reshape(-1, 3).round(5), axis=0)
-    mesh = stand.to_mesh()
-    tiny = np.linalg.norm(np.cross(tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0]), axis=1) < 1e-8
-    report(len(corners) == len(mesh.vert_properties) and not tiny.any(),
-           f"clean STL topology ({len(mesh.vert_properties) - len(corners)} coincident vertices, "
-           f"{tiny.sum()} zero-area triangles)")
+    merged, tiny = topology(stand)
+    report(not merged and not tiny,
+           f"clean STL topology ({merged} coincident vertices, {tiny} zero-area triangles)")
 
     must_be_empty = {
         "Tab5 body": d.tab5(),
@@ -122,6 +154,43 @@ def main():
             report(span < 25, f"bridge at Z={z:.1f}: {span:.1f} mm span")
         else:
             report(area[idx].sum() < 1.0, f"sloped overhang at Z={z:.1f}: {area[idx].sum():.1f} mm2")
+
+    # Two-filament version: the livery inlay and the stand it is recessed into.
+    body, inlay = g.build_parts(stand)
+    for name, part in (("stand with recess", body), ("ornament inlay", inlay)):
+        merged, tiny = topology(part)
+        report(part.status().name == "NoError" and not part.is_empty() and not merged and not tiny,
+               f"{name}: valid manifold, clean topology ({merged} coincident vertices, "
+               f"{tiny} zero-area triangles)")
+    overlap = (body ^ inlay).volume()
+    missing = abs(body.volume() + inlay.volume() - stand.volume())
+    report(overlap < TOLERANCE_MM3 and missing < TOLERANCE_MM3,
+           f"stand + ornament = one-colour stand ({overlap:.2f} mm3 overlap, {missing:.2f} mm3 apart)")
+    # Full depth everywhere: the livery stays on the flat face, clear of the rounded edges
+    # and the slots, so no part of the inlay thins out to a sliver.
+    livery = g.ornament()
+    thin = livery.area() * g.ORNAMENT_DEPTH - inlay.volume()
+    report(abs(thin) < TOLERANCE_MM3,
+           f"ornament inlaid {g.ORNAMENT_DEPTH} mm deep everywhere: {thin:.2f} mm3 short")
+    scaled = livery.scale((1, MIN_FEATURE_U / MIN_FEATURE_V))
+    r = MIN_FEATURE_U / 2
+    opened = scaled.offset(-r, JoinType.Miter, 10).offset(r, JoinType.Miter, 10)
+    closed = scaled.offset(r, JoinType.Miter, 10).offset(-r, JoinType.Miter, 10)
+    lost, filled = (scaled - opened).area(), (closed - scaled).area()
+    report(lost < 0.5 and filled < 0.5,
+           f"ornament strokes and gaps at least {MIN_FEATURE_U} mm across the slope and "
+           f"{MIN_FEATURE_V} mm up it ({lost:.2f} mm2 thinner, {filled:.2f} mm2 narrower)")
+    print(f"       ornament: {inlay.volume():.0f} mm3, in {g.colour_layers(inlay)} of the 0.2 mm layers")
+
+    # The written 3MF: one closed mesh per part, matching the model.
+    parts = read_3mf(g.OUT_3MF)
+    volumes = {name: closed_volume(*mesh) for name, mesh in parts.items()}
+    expected = {"stand": body.volume(), "ornament": inlay.volume()}
+    report(volumes.keys() == expected.keys()
+           and all(volumes[k] is not None and abs(volumes[k] - expected[k]) < TOLERANCE_MM3
+                   for k in expected),
+           f"{g.OUT_3MF.name}: closed meshes " + ", ".join(
+               f"{k} {v / 1000:.3f} cm3" if v is not None else f"{k} open" for k, v in volumes.items()))
 
     lo, hi = np.array(stand.bounding_box()).reshape(2, 3)
     print(f"       size {hi[0] - lo[0]:.1f} x {hi[1] - lo[1]:.1f} x {hi[2] - lo[2]:.1f} mm")

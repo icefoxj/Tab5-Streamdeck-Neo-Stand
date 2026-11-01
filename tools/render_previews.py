@@ -16,6 +16,7 @@ from devices import g  # noqa: E402
 
 IMAGES = d.ROOT / "images"
 STAND = "#e8833a"
+ORNAMENT = "#26292e"  # the livery, printed in a second filament
 DARK = "#202226"
 GLASS = "#0d1b2a"
 KEY = "#3a3f47"
@@ -118,12 +119,14 @@ def render(objects, path, elev, azim, width=1100, supersample=2):
 
 def main():
     IMAGES.mkdir(exist_ok=True)
-    stand = [(d.manifold_triangles(g.build()), STAND)]
+    body, inlay = g.build_parts()
+    stand = [(d.manifold_triangles(body), STAND), (d.manifold_triangles(inlay), ORNAMENT)]
     devices = tab5_mockup() + neo_mockup()
     render(stand + devices, IMAGES / "stand_with_devices.png", elev=22, azim=-32)
     render(stand, IMAGES / "stand_front.png", elev=24, azim=-35)
     render(stand, IMAGES / "stand_back.png", elev=24, azim=145)
     render(stand + devices, IMAGES / "stand_side.png", elev=0, azim=-90, width=800)
+    render(stand, IMAGES / "ornament.png", elev=90 - g.TILT, azim=0, width=900)
     # Speaker channel: the stand cut open 8 mm behind the face, seen square to the face.
     s0, s1 = g.tab5_range(*g.TAB5_SPEAKER_X)
     a, b = sorted((s0 - 12, -g.PLUG_SIDE * (g.WIDTH / 2 + 5)))
